@@ -7,12 +7,12 @@ class MenuHandler:
         self.currentMenuType = mainmenu
         self.currentMenu = self.currentMenuType(self.game)
 
-    def resetMenu(self):
-        self.currentMenu = self.currentMenuType(self.game)
+    def resetMenu(self, *args):
+        self.currentMenu = self.currentMenuType(self.game, args)
 
-    def changeMenu(self, menu):
+    def changeMenu(self, menu, *args):
         self.currentMenuType = menu
-        self.resetMenu()
+        self.resetMenu(args)
 
     def tick(self):
         self.currentMenu.tick_menu()
