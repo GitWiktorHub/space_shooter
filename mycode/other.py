@@ -8,7 +8,10 @@ class MenuHandler:
         self.currentMenu = self.currentMenuType(self.game)
 
     def resetMenu(self, *args):
-        self.currentMenu = self.currentMenuType(self.game, args)
+        if len(args) > 0:
+            self.currentMenu = self.currentMenuType(self.game, args)
+        else:
+            self.currentMenu = self.currentMenuType(self.game)
 
     def changeMenu(self, menu, *args):
         self.currentMenuType = menu
