@@ -4,6 +4,7 @@ from mycode.general import *
 import pygame
 from pygame.math import *
 from pygame.locals import *
+import json
 
 
 class MenuHandler:
@@ -79,9 +80,10 @@ class GameMenu:
         size = game.screen.get_size()
 
         # define the buttons
-        self.button_endless = Button(game, size[0]/5, size[1]/5, "./images/buttons/button_endless.png", 1.0, "./images/buttons/button_endless_hover.png")
-        self.button_levels = Button(game, size[0]/2, size[1]/5, "./images/buttons/button_levels.png", 1.0, "./images/buttons/button_levels_hover.png")
-        self.button_two_players = Button(game, size[0]*4/5, size[1]/5, "./images/buttons/button_two_players.png", 1.0, "./images/buttons/button_two_players_hover.png")
+        self.button_endless = Button(game, size[0] / 3, size[1] / 5, "./images/buttons/button_endless.png", 1.0,
+                                     "./images/buttons/button_endless_hover.png")
+        self.button_levels = Button(game, size[0] * 2 / 3, size[1] / 5, "./images/buttons/button_levels.png", 1.0,
+                                    "./images/buttons/button_levels_hover.png")
         self.button_ship = Button(game, size[0]/4, self.game.height-50, "./images/buttons/button_ship.png", 1.0, "./images/buttons/button_ship_hover.png")
         self.button_hangar = Button(game, size[0]/2, self.game.height-50, "./images/buttons/button_hangar.png", 1.0, "./images/buttons/button_hangar_hover.png")
         self.button_shop = Button(game, size[0]*3/4, self.game.height-50, "./images/buttons/button_shop.png", 1.0, "./images/buttons/button_shop_hover.png")
@@ -89,14 +91,13 @@ class GameMenu:
 
         # pack the buttons to the list
         self.buttons = [
-                        self.button_endless,
-                        self.button_levels,
-                        self.button_two_players,
-                        self.button_ship,
-                        self.button_hangar,
-                        self.button_shop,
-                        self.button_back
-                        ]
+            self.button_endless,
+            self.button_levels,
+            self.button_ship,
+            self.button_hangar,
+            self.button_shop,
+            self.button_back
+        ]
         self.background = pygame.image.load("./images/background.png").convert_alpha()
         self.ship = self.game.player.current_ship
 
@@ -130,21 +131,13 @@ class GameMenu:
 
     def tick_menu(self):
         if self.button_levels.check_click():
-            self.game.showing = "levelsmenu"
             self.game.menuHandler.changeMenu(LevelsMenu)
-        elif self.button_two_players.check_click():
-            self.game.showing = "twoplayers"
-            # self.game.menuHandler.changeMenu()
         elif self.button_back.check_click():
-            self.game.showing = "mainmenu"
             self.game.menuHandler.changeMenu(MainMenu)
         elif self.button_hangar.check_click():
-            self.game.showing = "hangar"
             self.game.menuHandler.changeMenu(HangarMenu)
         elif self.button_ship.check_click():
-            self.game.showing = "shipmenu"
             self.game.menuHandler.changeMenu(ShipMenu)
-            # self.game.shipmenu.__init__(self.game)
 
     def draw_menu(self):
         self.game.screen.blit(self.background, (0, 0))
@@ -160,24 +153,41 @@ class GameMenu:
         write(self.game, f"Mass: {str(self.game.player.current_ship.mass)}", 50, 400, 28, (200, 200, 200))
 
 
+from levels import LevelManager
+from mycode.enemies import BaseEnemy
+from collections.abc import Callable
 class LevelGame:
-    def __init__(self, game):
-        self.game = game
-        self.enemies = []
-
-        self.level_pointer = 0
-        self.currentLevelType = self.game.levels[self.level_pointer]
-        self.currentLevel = self.currentLevelType(self.game)
-
-        self.click_P_counter = 0
-
-        self.other_bullets = []
-
-    def reset_current_level(self):
-        self.currentLevelType = self.game.levels[self.level_pointer]
-        self.currentLevel = self.currentLevelType(self.game)
-
-    def tick_menu(self):
+    def __init__(
+        self, level_number: int, levelManager: LevelManager, menuHandler: MenuHandler, player_ship: PlayableShip
+    ):
+        """
+        Manages the situation on a concrete level
+        :param level_number:
+        :param levelManager:
+        :param menuHandler:
+        """
+        self.enemies: list[BaseEnemy] = []
+        self.other_bullets: list = []
+        
+        self.level_manager: LevelManager = levelManager
+        self.level_number: int = level_number
+        
+        self.click_P_counter: int = 0
+        self.menuHandler = menuHandler
+        
+        # reset player's ship's stats
+        player_ship.refill_stats()
+    
+    def check_for_key_press(self, key: int = pygame.K_p):
+        if pygame.key.get_pressed()[key] == 1 and self.click_P_counter == 0:
+            self.click_P_counter += 1
+            self.menuHandler.changeMenu(PauseMenu, True)
+        elif pygame.key.get_pressed()[pygame.K_p] == 0:
+            self.click_P_counter = 0
+        else:
+            self.click_P_counter += 1
+    
+    def tick_menu(self, player_ship: PlayableShip):
         """
         Method tick contains instructions to run during every tick (frame).
         First, it calls every enemies' tick method,
@@ -193,28 +203,13 @@ class LevelGame:
                 bullet.tick()
             else:
                 bullet.steered_by_menu = True
-
-            # if self.game.player.current_ship.mask.overlap(bullet.mask, (
-            #         bullet.pos.x - self.game.player.current_ship.hitbox.x,
-            #         bullet.pos.y - self.game.player.current_ship.hitbox.y)):
-            #     # energy = int((bullet.mass * bullet.vel * bullet.vel) / 2)
-            #     self.game.player.current_ship.hp.get_damage(bullet.damage)
-            #     self.other_bullets.remove(bullet)
-            #     continue
-
-        self.game.player.current_ship.tick()
-        self.currentLevel.tick()
-
-        if pygame.key.get_pressed()[pygame.K_p] == 1 and self.click_P_counter == 0:
-            self.click_P_counter += 1
-            self.game.menuHandler.changeMenu(PauseMenu, True)
-            # self.showing = "pausemenu"
-        elif pygame.key.get_pressed()[pygame.K_p] == 0:
-            self.click_P_counter = 0
-        else:
-            self.click_P_counter += 1
-
-    def draw_menu(self):
+        
+        player_ship.tick()
+        self.level_manager.tick(self.level_number, self.enemies)
+        
+        self.check_for_key_press()
+    
+    def draw_menu(self, player_ship: PlayableShip):
         """
         Method draw usually is called after tick method, it displays object on the screen.
         First, it draws the enemies,
@@ -225,17 +220,19 @@ class LevelGame:
 
         for bullet in self.other_bullets:
             bullet.draw()
-
-        self.game.player.current_ship.draw()
-        self.game.player.current_ship.hp.tick()
+        
+        player_ship.draw()
+        player_ship.hp.tick()
 
 class LevelsMenu:
-    def __init__(self, game):
+    def __init__(self, game, config_file: str = "../gameData/levels.json"):
         self.game = game
         self.button_back = Button(game, 50, 700, "./images/buttons/button_back.png", 1.0, "./images/buttons/button_back_hover.png")
         self.buttons = []
+        with open(config_file, "r") as f:
+            self.number_of_levels: int = len(json.load(f)['levels'])
 
-        for i, level in enumerate(self.game.levels):
+        for i in range(self.number_of_levels):
             if (i+1) % 3 == 1:
                 self.buttons.append(LevelButton(self.game, self.game.width/5, self._calculate_level_y(i+1), 200, 100, i+1))
             elif (i+1) % 3 == 2:
@@ -267,7 +264,8 @@ class LevelsMenu:
                         button.y += 50
                         button.rect.center = (button.x, button.y)
 
-    def _calculate_level_y(self, level_id):
+    @staticmethod
+    def _calculate_level_y(level_id):
         a = level_id % 3
         if a == 0: a = 3
         b = level_id - a
